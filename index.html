@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Infinita de Ícones</title>
+    <!-- Font Awesome para os ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- CSS externo -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="grid-container" id="gridContainer"></div>
+
+    <script>
+        // Configurações do movimento
+        const config = {
+            lerpFactor: 0.04, // Movimento ainda mais pesado
+            mouseOffset: 0.10, // Movimento do mouse ainda menos sensível
+            friction: 0.90 // Fator de atrito para desaceleração realista
+        };
+
+        // Calcula o deslocamento inicial para centralizar a grid
+        const GRID_SIZE = 32; // 32x32 = 1024 ícones, aproximadamente 1000
+        const CELL_SIZE = 180; // Voltando para o tamanho original dos ícones
+        const icons = [
+            'fa-star', 'fa-star-half-stroke', 'fa-star-sharp', 'fa-star-sharp-half-stroke',
+            'fa-gem', 'fa-heart', 'fa-bolt', 'fa-moon', 'fa-sun', 'fa-leaf', 'fa-fire', 'fa-rocket'
+        ];
+
+        function randomIcon() {
+            return icons[Math.floor(Math.random() * icons.length)];
+        }
+
+        function createGrid() {
+            gridContainer.innerHTML = '';
+            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+                const icon = document.createElement('div');
+                icon.className = 'icon-card';
+                icon.innerHTML = `<i class="fa-solid ${randomIcon()}"></i>`;
+                gridContainer.appendChild(icon);
+            }
+        }
+
+        // Estado de deslocamento
+        let offsetX = 0;
+        let offsetY = 0;
+
+        // Calcula o deslocamento inicial para centralizar a grid
+        function getInitialCenter() {
+            return {
+                x: -((GRID_SIZE * CELL_SIZE) / 2 - window.innerWidth / 2),
+                y: -((GRID_SIZE * CELL_SIZE) / 2 - window.innerHeight / 2)
+            };
+        }
+        let { x: initialX, y: initialY } = getInitialCenter();
+        const state = {
+            targetX: initialX,
+            targetY: initialY,
+            currentX: initialX,
+            currentY: initialY,
+            isMouseOver: false
+        };
+
+        // Velocidade para efeito de friction
+        let velocityX = 0;
+        let velocityY = 0;
+
+        function updatePosition() {
+            // Calcula os limites máximos de deslocamento
+            const maxOffsetX = 0;
+            const minOffsetX = -((GRID_SIZE * CELL_SIZE) - window.innerWidth);
+            const maxOffsetY = 0;
+            const minOffsetY = -((GRID_SIZE * CELL_SIZE) - window.innerHeight);
+
+            if (!state.isMouseOver) {
+                // Aplica friction na velocidade
+                velocityX *= config.friction;
+                velocityY *= config.friction;
+                // Atualiza posição com a velocidade
+                state.currentX += velocityX;
+                state.currentY += velocityY;
+                // Limita para não mostrar áreas vazias
+                state.currentX = Math.max(Math.min(state.currentX, maxOffsetX), minOffsetX);
+                state.currentY = Math.max(Math.min(state.currentY, maxOffsetY), minOffsetY);
+                offsetX = state.currentX;
+                offsetY = state.currentY;
+                gridContainer.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+                // Só continua animando se a velocidade for relevante
+                if (Math.abs(velocityX) > 0.1 || Math.abs(velocityY) > 0.1) {
+                    animationFrameId = requestAnimationFrame(updatePosition);
+                } else {
+                    animationFrameId = null;
+                }
+                return;
+            }
+
+            // Mouse ativo: calcula velocidade baseada no target
+            const dx = state.targetX - state.currentX;
+            const dy = state.targetY - state.currentY;
+            velocityX = dx * config.lerpFactor;
+            velocityY = dy * config.lerpFactor;
+            state.currentX += velocityX;
+            state.currentY += velocityY;
+
+            // Limita o deslocamento para não mostrar áreas vazias
+            offsetX = Math.max(Math.min(state.currentX, maxOffsetX), minOffsetX);
+            offsetY = Math.max(Math.min(state.currentY, maxOffsetY), minOffsetY);
+
+            gridContainer.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+
+            animationFrameId = requestAnimationFrame(updatePosition);
+        }
+
+        // Controle de animação
+        let animationFrameId = null;
+        let mouseActive = false;
+
+        // Flag para bloquear mouse follower após drag
+        let mouseFollowerEnabled = true; // Já ativa ao entrar com o mouse
+
+        // Para mouse pusher
+        let lastMouseX = undefined;
+        let lastMouseY = undefined;
+        let firstMouseMove = true;
+
+        // Eventos do mouse
+        function handleMouseMove(e) {
+            if (!mouseFollowerEnabled) return;
+            if (firstMouseMove) {
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                firstMouseMove = false;
+                return;
+            }
+            if (lastMouseX !== undefined && lastMouseY !== undefined) {
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                state.targetX += deltaX * config.mouseOffset * 2;
+                state.targetY += deltaY * config.mouseOffset * 2;
+            }
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            state.isMouseOver = true;
+            if (!animationFrameId) updatePosition();
+        }
+
+        function handleMouseEnter(e) {
+            state.isMouseOver = true;
+            mouseFollowerEnabled = true; // Ativa mouse follower ao entrar na janela, sem exigir clique
+            if (e && typeof e.clientX === 'number' && typeof e.clientY === 'number') {
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                firstMouseMove = true;
+            }
+            if (!animationFrameId) updatePosition();
+        }
+
+        function handleMouseLeave(e) {
+            // Só desativa se o mouse realmente saiu da janela
+            if (!e.relatedTarget && e.clientX <= 0 || e.clientX >= window.innerWidth || 
+                e.clientY <= 0 || e.clientY >= window.innerHeight) {
+                state.isMouseOver = false;
+                mouseFollowerEnabled = false; // Bloqueia mouse follower ao sair da janela
+                lastMouseX = undefined;
+                lastMouseY = undefined;
+                firstMouseMove = true;
+            }
+        }
+
+        function handleMouseDown(e) {
+            state.isMouseOver = true;
+            mouseFollowerEnabled = true; // Ativa mouse follower ao clicar
+            // Mantém a posição atual ao reativar
+            state.targetX = state.currentX;
+            state.targetY = state.currentY;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            firstMouseMove = true;
+            if (!animationFrameId) updatePosition();
+        }
+
+        // Adicionar eventos ao window para garantir que funcionem em toda a tela
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseenter', handleMouseEnter, true);
+        window.addEventListener('mouseleave', handleMouseLeave, true);
+        window.addEventListener('mousedown', handleMouseDown, true);
+
+        // Garantir que o movimento volte quando a janela receber foco
+        window.addEventListener('focus', () => {
+            state.isMouseOver = true;
+            if (!animationFrameId) updatePosition();
+        });
+
+        // Garantir que o movimento pare apenas quando a janela perder foco
+        window.addEventListener('blur', () => {
+            // Não desativa o movimento ao perder foco
+            // state.isMouseOver = false;
+        });
+
+        // --- Drag manual ---
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let lastDragX = 0;
+        let lastDragY = 0;
+        let wasMouseOver = false; // Para guardar o estado anterior do mouse
+
+        function onDragStart(e) {
+            isDragging = true;
+            wasMouseOver = state.isMouseOver; // Guarda o estado atual
+            state.isMouseOver = true; // Mantém o movimento ativo durante o drag
+            mouseFollowerEnabled = true; // Ativa mouse follower ao começar drag
+            if (e.type === 'touchstart') {
+                dragStartX = e.touches[0].clientX;
+                dragStartY = e.touches[0].clientY;
+            } else {
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+            }
+            lastDragX = dragStartX;
+            lastDragY = dragStartY;
+            document.body.classList.add('dragging');
+        }
+
+        function onDragMove(e) {
+            if (!isDragging) return;
+            
+            let clientX, clientY;
+            if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            const deltaX = clientX - lastDragX;
+            const deltaY = clientY - lastDragY;
+            
+            // Atualiza tanto a posição atual quanto a alvo, mas respeita os limites
+            state.currentX = Math.max(Math.min(state.currentX + deltaX, 0), -((GRID_SIZE * CELL_SIZE) - window.innerWidth));
+            state.currentY = Math.max(Math.min(state.currentY + deltaY, 0), -((GRID_SIZE * CELL_SIZE) - window.innerHeight));
+            state.targetX = state.currentX;
+            state.targetY = state.currentY;
+            offsetX = state.currentX;
+            offsetY = state.currentY;
+            gridContainer.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+            lastDragX = clientX;
+            lastDragY = clientY;
+        }
+
+        function onDragEnd() {
+            isDragging = false;
+            document.body.classList.remove('dragging');
+            // Ao soltar, fixa a posição exatamente onde parou
+            state.targetX = state.currentX;
+            state.targetY = state.currentY;
+            state.isMouseOver = false;
+            mouseFollowerEnabled = true; // Reativa o empurrador do mouse
+            if (!animationFrameId) updatePosition();
+        }
+
+        // Eventos de mouse para drag - agora no window para capturar em toda a tela
+        window.addEventListener('mousedown', onDragStart);
+        window.addEventListener('mousemove', onDragMove);
+        window.addEventListener('mouseup', onDragEnd);
+        // Eventos de touch
+        window.addEventListener('touchstart', onDragStart, {passive: false});
+        window.addEventListener('touchmove', onDragMove, {passive: false});
+        window.addEventListener('touchend', onDragEnd);
+
+        // Prevenir scroll por touch
+        document.body.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+
+        // Adicionar um indicador visual do centro (opcional)
+        function createCenterIndicator() {
+            const indicator = document.createElement('div');
+            indicator.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                width: 20px;
+                height: 20px;
+                background: rgba(0, 255, 153, 0.2);
+                border: 2px solid #00ff99;
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                pointer-events: none;
+                z-index: 1000;
+            `;
+            document.body.appendChild(indicator);
+        }
+
+        createGrid();
+        createCenterIndicator();
+
+        // Ajustar grid-template para GRID_SIZE
+        gridContainer.style.gridTemplateColumns = `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`;
+        gridContainer.style.gridTemplateRows = `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`;
+
+        // Centraliza visualmente no carregamento
+        gridContainer.style.transform = `translate(${initialX}px, ${initialY}px)`;
+
+        // Centralizar ao redimensionar a janela
+        window.addEventListener('resize', () => {
+            const center = getInitialCenter();
+            state.targetX = center.x;
+            state.targetY = center.y;
+            state.currentX = center.x;
+            state.currentY = center.y;
+            updatePosition();
+        });
+    </script>
+</body>
+</html> 

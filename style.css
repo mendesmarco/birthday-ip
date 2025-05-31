@@ -1,0 +1,97 @@
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden !important;
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    background: #111214; /* Fundo escuro elegante */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Inter', Arial, Helvetica, sans-serif;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden !important;
+}
+
+.grid-container {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: grid;
+    gap: 40px;
+    transition: transform 0.1s ease-out;
+    will-change: transform;
+    pointer-events: auto;
+    width: fit-content;
+    height: fit-content;
+    min-width: 100%;
+    min-height: 100%;
+}
+
+.icon-card {
+    width: 160px;
+    height: 160px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 32px;
+    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.18);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.3s, box-shadow 0.3s, transform 0.2s;
+    cursor: pointer;
+    border: 1.5px solid rgba(255,255,255,0.10);
+    backdrop-filter: blur(2px);
+}
+
+.icon-card:hover {
+    background: rgba(255,255,255,0.16);
+    box-shadow: 0 4px 16px 0 rgba(0,0,0,0.18);
+    transform: scale(1.04) rotate(-1deg);
+    border-color: #00ff99;
+}
+
+.icon-card i {
+    font-size: 96px;
+    color: #00ff99;
+    filter: drop-shadow(0 4px 16px #00ff9955);
+    transition: color 0.3s, filter 0.3s;
+}
+
+.icon-card:hover i {
+    color: #fff;
+    filter: drop-shadow(0 4px 16px #00ff99cc);
+}
+
+@media (max-width: 600px) {
+    .grid-container {
+        grid-template-columns: repeat(20, 80px);
+        grid-template-rows: repeat(20, 80px);
+        gap: 20px;
+    }
+    .icon-card {
+        width: 60px;
+        height: 60px;
+        border-radius: 14px;
+    }
+    .icon-card i {
+        font-size: 32px;
+    }
+}
+
+body, html, .grid-container {
+    cursor: grab !important;
+}
+
+body.dragging, html.dragging, .grid-container.dragging {
+    cursor: grabbing !important;
+} 
